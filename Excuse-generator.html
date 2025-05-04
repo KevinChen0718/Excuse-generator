@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>不想上班藉口產生器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Apply Tailwind dark mode configuration
+    tailwind.config = { darkMode: 'class' };
+  </script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap"
+    rel="stylesheet"
+  >
+  <style>
+    /* 基本字體設定 */
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      /* 增加上下 padding 給對話框留出空間 */
+      padding-top: 2rem;
+      padding-bottom: 2rem;
+      /* 確保 body 至少和視窗一樣高 */
+      min-height: 100vh;
+      /* 使用 flex 將內容置中 (垂直+水平) */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    /* 評分按鈕樣式 */
+    .rating-button {
+      transition: background-color .2s, transform .1s;
+    }
+    .rating-button:active {
+      transform: scale(.95);
+    }
+    /* 對話框基本樣式 */
+    #speech-bubble {
+      /* 初始狀態 */
+      opacity: 0;
+      transform: translateX(-50%) scale(0.95); /* 初始縮放與位移 */
+      transform-origin: bottom center; /* 設定縮放動畫的原點 */
+      transition: opacity 0.3s ease-out, transform 0.3s ease-out; /* 平滑過渡效果 */
+      position: absolute;
+      /* 定位在頭像上方，並留出 10px 間距 */
+      bottom: calc(100% + 10px);
+      left: 50%;
+      min-width: 200px; /* 最小寬度 */
+      pointer-events: none; /* 初始不可交互 */
+    }
+    /* 對話框可見狀態 */
+    #speech-bubble.visible {
+        opacity: 1;
+        transform: translateX(-50%) scale(1); /* 恢復正常大小 */
+        pointer-events: auto; /* 可見時可交互 */
+    }
+    /* 對話框箭頭 (淺色模式) */
+    #speech-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -10px; /* 指向下方 */
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      /* 箭頭顏色與淺色背景一致 */
+      border-top: 10px solid white; /* Tailwind bg-white */
+      transition: border-color 0.3s ease-out; /* 顏色變化也加上過渡 */
+    }
+    /* 對話框箭頭 (深色模式) */
+    .dark #speech-bubble::after {
+        /* 箭頭顏色與深色背景一致 */
+        border-top-color: #374151; /* Tailwind dark:bg-gray-700 */
+    }
+    /* 厭世臉互動效果 */
+    #worker-face {
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+    #worker-face:hover {
+        transform: scale(1.05);
+    }
+    #worker-face:active {
+        transform: scale(0.98);
+    }
+  </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
+
+  <button
+    id="theme-toggle"
+    class="fixed top-4 right-4 p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-xl shadow-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+    aria-label="切換主題"
+  >
+    <span>🌙</span>
+  </button>
+
+  <div class="main-container relative text-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full mx-auto transition-colors duration-300">
+    <h1 class="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">
+      今天不想上班？點大頭找藉口！
+    </h1>
+
+    <div class="relative inline-block mb-6">
+      <svg
+        id="worker-face"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 100 100"
+        class="w-24 sm:w-32 h-auto mx-auto text-gray-600 dark:text-gray-400"
+      >
+        <circle cx="50" cy="50" r="45" class="fill-gray-200 dark:fill-gray-600 stroke-gray-400 dark:stroke-gray-500 transition-colors" stroke-width="2"/>
+        <circle cx="35" cy="47" r="4.5" class="fill-gray-600 dark:fill-gray-300 transition-colors"/>
+        <circle cx="65" cy="47" r="4.5" class="fill-gray-600 dark:fill-gray-300 transition-colors"/>
+        <path d="M27 54 Q35 61 43 54" class="stroke-gray-400 dark:stroke-gray-500 transition-colors" stroke-width="2.5" fill="none"/>
+        <path d="M57 54 Q65 61 73 54" class="stroke-gray-400 dark:stroke-gray-500 transition-colors" stroke-width="2.5" fill="none"/>
+        <path d="M30 72 Q50 70 70 72" class="stroke-gray-500 dark:stroke-gray-400 transition-colors" stroke-width="3.5" fill="none"/>
+        <path d="M40 15 Q45 5 50 15" class="stroke-gray-500 dark:stroke-gray-400 transition-colors" stroke-width="2" fill="none"/>
+        <path d="M50 15 Q55 5 60 15" class="stroke-gray-500 dark:stroke-gray-400 transition-colors" stroke-width="2" fill="none"/>
+        <path d="M45 18 Q50 8 55 18" class="stroke-gray-500 dark:stroke-gray-400 transition-colors" stroke-width="2" fill="none"/>
+      </svg>
+      <div
+        id="speech-bubble"
+        class="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-md max-w-xs text-left"
+        >
+        <p id="excuse-text" class="text-gray-700 dark:text-gray-200">...</p>
+      </div>
+    </div>
+
+    <div id="rating-section" class="mt-6 hidden">
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+        這個藉口的可信度？ (1=鬼才信, 5=好像可以喔)
+      </p>
+      <div class="flex flex-wrap justify-center gap-2">
+        <button class="rating-button bg-red-200 hover:bg-red-300 text-red-800 font-bold py-1 px-3 rounded-full text-sm" onclick="rateExcuse(1)">1</button>
+        <button class="rating-button bg-orange-200 hover:bg-orange-300 text-orange-800 font-bold py-1 px-3 rounded-full text-sm" onclick="rateExcuse(2)">2</button>
+        <button class="rating-button bg-yellow-200 hover:bg-yellow-300 text-yellow-800 font-bold py-1 px-3 rounded-full text-sm" onclick="rateExcuse(3)">3</button>
+        <button class="rating-button bg-lime-200 hover:bg-lime-300 text-lime-800 font-bold py-1 px-3 rounded-full text-sm" onclick="rateExcuse(4)">4</button>
+        <button class="rating-button bg-green-200 hover:bg-green-300 text-green-800 font-bold py-1 px-3 rounded-full text-sm" onclick="rateExcuse(5)">5</button>
+      </div>
+      <p id="rating-feedback" class="text-xs text-gray-500 dark:text-gray-400 mt-2 h-4"></p>
+    </div>
+
+    <div id="copy-section" class="mt-4 hidden"> <button id="copy-excuse" class="rating-button bg-blue-200 hover:bg-blue-300 dark:bg-blue-600 dark:hover:bg-blue-500 text-blue-800 dark:text-white font-bold py-1.5 px-4 rounded-full text-sm transition-colors"> 📋 複製藉口
+      </button>
+      <span id="copy-feedback" class="ml-2 text-xs text-green-600 dark:text-green-400"></span>
+    </div>
+  </div>
+
+  <script>
+    // --- DOM 元素獲取 ---
+    const themeToggle   = document.getElementById('theme-toggle');
+    const themeIcon     = themeToggle.querySelector('span'); // 獲取按鈕內的圖標 span
+    const root          = document.documentElement; // HTML 根元素
+    const workerFace    = document.getElementById('worker-face');
+    const speechBubble  = document.getElementById('speech-bubble');
+    const excuseText    = document.getElementById('excuse-text');
+    const ratingSection = document.getElementById('rating-section');
+    const ratingFeedback= document.getElementById('rating-feedback');
+    const copySection   = document.getElementById('copy-section');
+    const copyBtn       = document.getElementById('copy-excuse');
+    const copyFb        = document.getElementById('copy-feedback');
+    let ratingTimeout; // 評分回饋計時器
+    let copyTimeout;   // 複製回饋計時器
+
+    // --- 主題切換邏輯 ---
+    function applyTheme(theme) {
+      if (theme === 'dark') {
+        root.classList.add('dark');
+        themeIcon.textContent = '☀️'; // 深色模式顯示太陽
+        localStorage.setItem('theme', 'dark');
+      } else {
+        root.classList.remove('dark');
+        themeIcon.textContent = '🌙'; // 淺色模式顯示月亮
+        localStorage.setItem('theme', 'light');
+      }
+    }
+
+    // 初始化主題：檢查本地儲存或系統偏好
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+    applyTheme(initialTheme);
+
+    // 主題切換按鈕事件
+    themeToggle.addEventListener('click', () => {
+      const newTheme = root.classList.contains('dark') ? 'light' : 'dark';
+      applyTheme(newTheme);
+    });
+
+    // --- 藉口列表 ---
+    const excuses = [
+      "我家的貓學會了上網，現在牠正在用我的電腦下單一噸的貓薄荷，我得阻止牠！",
+      "我被一群會跳踢踏舞的鴿子包圍了，牠們要求我加入牠們的舞團，我走不開。",
+      "我的左腳大拇指突然覺醒了哲學意識，正在思考存在的意義，我必須尊重牠的空間。",
+      "我昨天夢到自己變成了一顆馬鈴薯，今天還沒完全從馬鈴薯的狀態恢復過來。",
+      "我的影子鬧脾氣離家出走了，我得先找到牠才能出門，不然不吉利。",
+      "外星人把我的鬧鐘偷走了，還留下字條說要做『時間實驗』。",
+      "我不小心把咖啡倒在鍵盤上，現在它每打一個字都會自動加上『喵』，我需要修理它。",
+      "我家的盆栽突然長出了腿，還說要去環遊世界，我得去機場送送它。",
+      "我發現我的靈魂跟隔壁鄰居的狗交換了，現在汪汪叫才是我正常的溝通方式。",
+      "龍捲風把我的假髮吹走了，那是我的本體，找不到就無法出門。",
+      "我的床今天特別有吸引力，物理學家應該研究一下這個現象，我自願當實驗品。",
+      "我正在跟我的室內灰塵進行一場嚴肅的談判，關於領土劃分問題。",
+      "為了響應環保，我決定今天透過光合作用獲取能量，暫時不需要移動。",
+      "我家的智慧音箱突然開始唱饒舌，而且停不下來，聲音太大我無法思考。",
+      "我被困在自己的毛衣裡了，它好像縮水了，或者我變胖了？需要專業救援。",
+      "我的牙膏用完了，根據古老的家族傳統，找不到新牙膏前不能與外界交流。",
+      "我預感今天會遇到命中註定的那個人，但地點是在我家沙發上，所以我不能離開。",
+      "我的想像朋友今天生日，我要在家幫他辦派對，他會傷心的如果我不在。",
+      "我不小心吞下了一顆樂高積木，現在走路會發出喀拉喀拉的聲音，太尷尬了。",
+      "我家的網路路由器成精了，它要求我必須先回答三個哲學問題才能上網，我卡關了。",
+      "我的 Wi-Fi 路由器要求用比特幣支付贖金才讓我連線。",
+      "做手工藝時不小心把兩隻手黏在一起了，正在等待強力膠溶解。",
+      "一群遷徙中的蝴蝶選擇了我家門口作為休息點，畫面太美我不敢打擾牠們。",
+      "鏡子裡的我不只跟我搭話，還給了我糟糕的人生建議，我需要時間消化一下。",
+      "我正在跟我的貓進行一場意志力的對決（瞪眼比賽），我決心要贏，可能要花好幾個小時。",
+      "我的幸運襪洗了還沒乾，沒有它們我無法面對今天。",
+      "住在我家的鬼又把我的鑰匙藏起來了，我們之間的關係真的很複雜。",
+      "我不小心把隱形墨水灑到我的工作服上了，現在我找不到它們。",
+      "我的內心獨白突然切換成了一種我聽不懂的語言，非常混亂。",
+      "我正在嘗試教我的金魚學會「撿回來」這個指令，進度異常緩慢。",
+      "一股學習蘇格蘭風笛的衝動突然淹沒了我，必須立刻找到風笛。",
+      "我的頭髮宣布獨立了，它拒絕被梳理成任何造型。",
+      "我正和我的烤麵包機就「酥脆度」的定義進行一場激烈的哲學辯論。",
+      "地板今天決定變成岩漿，我還沒找到通往門口的安全路徑。",
+      "我收藏的稀有瓶蓋急需按照字母順序重新排列，這非常重要。",
+      "我今天跟我的沙發磁場特別合，物理上分不開了。",
+      "我的咖啡杯把我的工作動力當作人質了，談判正在進行中。",
+      "我不小心進入了一個襪子總是在烘乾機裡消失的平行時空，正在努力找路回來。",
+      "我家院子裡的松鼠成立了工會，正在我家前門罷工抗議。",
+      "我的大腦目前正在緩衝處理中，請稍候..."
+    ];
+
+    // --- 核心功能 ---
+
+    // 顯示對話框
+    function showBubble() {
+        speechBubble.classList.add('visible');
+    }
+
+    // 隱藏對話框
+    function hideBubble() {
+        speechBubble.classList.remove('visible');
+    }
+
+    // 點擊頭像：產生藉口並顯示
+    workerFace.addEventListener('click', e => {
+      e.stopPropagation(); // 阻止事件冒泡到 document
+      // 隨機選取藉口
+      const randomExcuse = excuses[Math.floor(Math.random() * excuses.length)];
+      excuseText.textContent = randomExcuse; // 設定藉口文字
+
+      showBubble(); // 顯示對話框
+
+      ratingSection.classList.remove('hidden'); // 顯示評分區
+      copySection.classList.remove('hidden');   // 顯示複製區
+      ratingFeedback.textContent = '';        // 清除舊的評分回饋
+      copyFb.textContent = '';                // 清除舊的複製回饋
+      clearTimeout(ratingTimeout);            // 清除評分計時器
+      clearTimeout(copyTimeout);              // 清除複製計時器
+    });
+
+    // 評分功能
+    window.rateExcuse = function(score) { // 將函數掛載到 window 使 onclick 可以調用
+      console.log(`使用者評分: ${score}`); // 控制台輸出 (可選)
+      let feedback = '';
+      switch(score){
+        case 1: feedback="嗯...這藉口連鬼都不信吧？"; break;
+        case 2: feedback="這個...可能需要一點想像力。"; break;
+        case 3: feedback="有點意思，但破綻不少。"; break;
+        case 4: feedback="說不定...真的有可能？"; break;
+        case 5: feedback="完美！老闆一定會相信的！（大概吧）"; break;
+      }
+      ratingFeedback.textContent = feedback; // 顯示評分回饋
+
+      // 清除舊計時器並設定新計時器，3秒後清除回饋
+      clearTimeout(ratingTimeout);
+      ratingTimeout = setTimeout(() => ratingFeedback.textContent = '', 3000);
+
+      // 稍微延遲後隱藏對話框
+      setTimeout(hideBubble, 500);
+    }
+
+    // 複製功能
+    copyBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // 防止觸發 document 的點擊事件
+      const textToCopy = excuseText.textContent;
+      if (navigator.clipboard && textToCopy) {
+        navigator.clipboard.writeText(textToCopy)
+          .then(() => {
+            copyFb.textContent = '已複製！'; // 顯示成功訊息
+            // 清除舊計時器並設定新計時器，2秒後清除訊息
+            clearTimeout(copyTimeout);
+            copyTimeout = setTimeout(() => copyFb.textContent = '', 2000);
+          })
+          .catch(err => {
+            console.error('複製失敗:', err); // 控制台輸出錯誤
+            copyFb.textContent = '複製失敗'; // 顯示失敗訊息
+            clearTimeout(copyTimeout);
+            copyTimeout = setTimeout(() => copyFb.textContent = '', 2000);
+          });
+      } else {
+          // 降級處理或提示 (如果需要支援舊瀏覽器)
+          copyFb.textContent = '瀏覽器不支援';
+          clearTimeout(copyTimeout);
+          copyTimeout = setTimeout(() => copyFb.textContent = '', 2000);
+      }
+    });
+
+    // --- 全局點擊事件：隱藏對話框 ---
+    document.addEventListener('click', e => {
+      // 檢查對話框是否可見，且點擊的目標不是頭像、也不是評分區或複製區內的元素
+      if (speechBubble.classList.contains('visible') &&
+          !workerFace.contains(e.target) &&
+          !ratingSection.contains(e.target) &&
+          !copySection.contains(e.target)) {
+        hideBubble(); // 隱藏對話框
+        ratingFeedback.textContent = ''; // 同步清除評分回饋
+        clearTimeout(ratingTimeout);     // 清除評分計時器
+      }
+    });
+
+    // --- 阻止事件冒泡 ---
+    // 防止點擊評分區或複製區時，觸發 document 的點擊事件導致對話框關閉
+    ratingSection.addEventListener('click', e => e.stopPropagation());
+    copySection.addEventListener('click', e => e.stopPropagation()); // 複製區也需要阻止冒泡
+
+  </script>
+</body>
+</html>
+
